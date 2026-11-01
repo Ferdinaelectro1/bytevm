@@ -1,5 +1,8 @@
 use std::println;
 
+const FLAG_NEGATIVE: u8 = 0b0000_1000; // Bit 3 (N): Set if the result has bit 7 set (negative)
+const FLAG_ZERO: u8 = 0b0001_0000; // Bit 4 (Z): Set if the result is zero
+const FLAG_CARRY: u8 = 0b0010_0000; // Bit 5 (C): Set if the result overflowed 8 bits (carry out)
 const FLAG_HALT: u8 = 0b1000_0000; // Bit 7 (H): Set if the CPU should halt
 const RAM_SIZE: usize = 4_096;
 const NUMBER_OF_REGS: usize = 4;
@@ -12,6 +15,11 @@ struct CPU {
     pc: u16,
     _sp: u16,
     flags: u8,
+}
+
+fn overflowing_add(a: u8, b: u8) -> (u8, bool) {
+    let res = a as u16 + b as u16;
+    (res as u8, res > u8::MAX as u16)
 }
 
 impl CPU {
@@ -62,7 +70,19 @@ impl CPU {
                 self.registers[reg as usize] = value;
             }
             Instruction::ADD { reg } => {
-                self.accumulator += self.registers[reg as usize];
+                self.flags &= !(FLAG_CARRY | FLAG_ZERO | FLAG_NEGATIVE);
+                let overflow;
+                (self.accumulator, overflow) =
+                    overflowing_add(self.accumulator, self.registers[reg as usize]);
+                if self.accumulator == 0 {
+                    self.flags |= FLAG_ZERO;
+                }
+                if self.accumulator & 0b1000_0000 != 0 {
+                    self.flags |= FLAG_NEGATIVE;
+                }
+                if overflow {
+                    self.flags |= FLAG_CARRY;
+                }
             }
             Instruction::PRINT { reg } => {
                 println!("R{reg} = [{:#X}]", self.registers[reg as usize]);
@@ -89,8 +109,8 @@ fn main() {
     println!("CPU init successful..");
 
     let program = [
-        1, 0, 15, // LDI R0, 15
-        1, 1, 20, // LDI R1, 20
+        1, 0, 100, // LDI R0, 15
+        1, 1, 200, // LDI R1, 20
         2, 0, // ADD R0
         2, 1, // ADD R1
         3, 0, // PRINT R0
@@ -108,4 +128,5 @@ fn main() {
     }
 
     println!("Final Accumulator value: {}", cpu.accumulator);
+    println!("Flags: {:08b}", cpu.flags);
 }
