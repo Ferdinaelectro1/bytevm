@@ -22,8 +22,8 @@ fn overflowing_add(a: u8, b: u8) -> (u8, bool) {
     (res as u8, res > u8::MAX as u16)
 }
 
-fn overflowing_sub(a: u8,b: u8) -> (u8,bool) {
-    ((a as u16 + 256 - b as u16) as u8,a < b)
+fn overflowing_sub(a: u8, b: u8) -> (u8, bool) {
+    ((a as u16 + 256 - b as u16) as u8, a < b)
 }
 
 impl CPU {
@@ -64,11 +64,11 @@ impl CPU {
                 Instruction::PRINT { reg: reg }
             }
             4 => Instruction::HALT,
-            5 => { 
+            5 => {
                 let reg = self.ram[self.pc as usize];
                 self.pc += 1; //next instruction
                 Instruction::SUB { reg: reg }
-            },
+            }
             _ => Instruction::NOP,
         }
     }
@@ -81,15 +81,17 @@ impl CPU {
             Instruction::ADD { reg } => {
                 self.reinit_perform_flags();
                 let positive_verflow;
-                (self.accumulator, positive_verflow) = overflowing_add(self.accumulator, self.registers[reg as usize]);
+                (self.accumulator, positive_verflow) =
+                    overflowing_add(self.accumulator, self.registers[reg as usize]);
                 self.update_flags(positive_verflow);
-            },
+            }
             Instruction::SUB { reg } => {
                 self.reinit_perform_flags();
                 let negative_overflow;
-                (self.accumulator,negative_overflow) = overflowing_sub(self.accumulator, self.registers[reg as usize]);
+                (self.accumulator, negative_overflow) =
+                    overflowing_sub(self.accumulator, self.registers[reg as usize]);
                 self.update_flags(negative_overflow);
-            },
+            }
             Instruction::PRINT { reg } => {
                 println!("R{reg} = [{:#X}]", self.registers[reg as usize]);
             }
@@ -104,7 +106,7 @@ impl CPU {
         self.flags &= !(FLAG_CARRY | FLAG_ZERO | FLAG_NEGATIVE);
     }
 
-    fn update_flags(& mut self,carry : bool) {
+    fn update_flags(&mut self, carry: bool) {
         self.set_perform_flags();
         if carry {
             self.flags |= FLAG_CARRY;
@@ -125,7 +127,7 @@ impl CPU {
 enum Instruction {
     LDI { reg: u8, value: u8 }, // Load immediate value into register
     ADD { reg: u8 },            // Add register to accumulator
-    SUB { reg: u8 },            //Sub register to accumulator
+    SUB { reg: u8 },            // Sub register from accumulator
     PRINT { reg: u8 },          // Print register value
     HALT,                       // Stop execution
     NOP,
@@ -157,3 +159,6 @@ fn main() {
     println!("Final Accumulator value: {}", cpu.accumulator);
     println!("Flags: {:08b}", cpu.flags);
 }
+
+#[cfg(test)]
+mod tests;
